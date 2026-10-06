@@ -15,19 +15,22 @@ from scipy.io import wavfile
 
 from .corpus import TONIC_MIDI
 
+KEY_TONIC = {"major": TONIC_MIDI, "minor": TONIC_MIDI - 3}  # Dó4 ou Lá3
+
 
 # ---------- PARTITURA ----------
 
-def to_score(tokens, bass=None, bpm: int = 76, title: str = "Coral gerado") -> stream.Score:
+def to_score(tokens, bass=None, mode: str = "major", bpm: int = 76, title: str = "Coral gerado") -> stream.Score:
     """Monta a partitura do music21 com o soprano e, se houver, o baixo
 
     :param tokens: melodia gerada
     :param bass: alturas do baixo (None para só a melodia)
+    :param mode: "major" ou "minor"
     :param bpm: andamento
     :param title: título da partitura
     :return: partitura do music21
     """
-    tonic = TONIC_MIDI
+    tonic = KEY_TONIC[mode]
     score = stream.Score()
     score.metadata = metadata.Metadata(title=title, composer="Cadeia de Markov (estilo J. S. Bach)")
 

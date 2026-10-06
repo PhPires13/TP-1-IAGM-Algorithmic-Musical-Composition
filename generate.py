@@ -3,7 +3,7 @@
 Exemplos:
     python generate.py                                  # 3 peças, ordem 3, T = 1.0
     python generate.py --order 1 --n 5 --seed 10
-    python generate.py --order 5 --temperature 1.5 --phrases 6
+    python generate.py --order 5 --temperature 1.5 --phrases 6 --mode minor
 """
 
 from __future__ import annotations
@@ -18,13 +18,14 @@ from markov_music.markov import MarkovChain
 from markov_music.render import synthesize, to_score, write_symbolic
 
 
-def build_models(order: int):
+def build_models(order: int, mode: str):
     """Carrega o corpus e treina as cadeias da melodia e do baixo
 
     :param order: ordem n da cadeia da melodia
+    :param mode: "major" ou "minor"
     :return: (cadeia da melodia, cadeia do baixo, sequências do corpus)
     """
-    seqs, basses, _ = load_corpus()
+    seqs, basses, _ = load_corpus(mode)
     model = MarkovChain(order).fit(seqs)
     bass_model = BassChain().fit(seqs, basses)
     return model, bass_model, seqs
@@ -35,6 +36,7 @@ def main():
     ap.add_argument("--order", type=int, default=3, help="ordem n da cadeia de Markov (memória)")
     ap.add_argument("--temperature", type=float, default=1.0, help="temperatura da amostragem")
     ap.add_argument("--phrases", type=int, default=4, help="número de frases (fermatas) da peça")
+    ap.add_argument("--mode", choices=["major", "minor"], default="major", help="corais em modo maior ou menor")
     ap.add_argument("--n", type=int, default=3, help="quantidade de peças a gerar")
     ap.add_argument("--seed", type=int, default=0, help="semente inicial (peça i usa seed+i)")
     ap.add_argument("--no-bass", action="store_true", help="gera apenas a melodia (sem a linha do baixo)")
@@ -43,8 +45,8 @@ def main():
     ap.add_argument("--outdir", type=Path, default=Path("outputs"))
     args = ap.parse_args()
 
-    model, bass_model, seqs = build_models(args.order)
-    print(f"Modelo de ordem {args.order}: {model.n_contexts()} contextos de {len(seqs)} corais.")
+    model, bass_model, seqs = build_models(args.order, args.mode)
+    print(f"Modelo de ordem {args.order}: {model.n_contexts()} contextos de {len(seqs)} corais ({args.mode}).")
 
     for i in range(args.n):
         seed = args.seed + i
@@ -57,11 +59,12 @@ def main():
         )
 
         # ----- Arquivos simbólicos e áudio
-        name = f"o{args.order}_t{args.temperature:g}_p{args.phrases}_s{seed}"
+        name = f"{args.mode}_o{args.order}_t{args.temperature:g}_p{args.phrases}_s{seed}"
         base = args.outdir / name / name
         score = to_score(
             comp.tokens,
             comp.bass,
+            args.mode,
             args.bpm,
             title=f"Coral Markov (ordem {args.order}, T={args.temperature:g}, semente {seed})",
         )
