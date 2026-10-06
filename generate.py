@@ -14,7 +14,7 @@ from pathlib import Path
 from markov_music.composer import compose
 from markov_music.corpus import load_corpus
 from markov_music.markov import MarkovChain
-from markov_music.render import to_score, write_symbolic
+from markov_music.render import synthesize, to_score, write_symbolic
 
 
 def build_models(order: int):
@@ -35,6 +35,8 @@ def main():
     ap.add_argument("--phrases", type=int, default=4, help="número de frases (fermatas) da peça")
     ap.add_argument("--n", type=int, default=3, help="quantidade de peças a gerar")
     ap.add_argument("--seed", type=int, default=0, help="semente inicial (peça i usa seed+i)")
+    ap.add_argument("--no-audio", action="store_true", help="não sintetiza o .wav")
+    ap.add_argument("--bpm", type=int, default=76)
     ap.add_argument("--outdir", type=Path, default=Path("outputs"))
     args = ap.parse_args()
 
@@ -45,14 +47,17 @@ def main():
         seed = args.seed + i
         comp = compose(model, seed, n_phrases=args.phrases, temperature=args.temperature)
 
-        # ----- Arquivos simbólicos
+        # ----- Arquivos simbólicos e áudio
         name = f"o{args.order}_t{args.temperature:g}_p{args.phrases}_s{seed}"
         base = args.outdir / name / name
         score = to_score(
             comp.tokens,
+            args.bpm,
             title=f"Coral Markov (ordem {args.order}, T={args.temperature:g}, semente {seed})",
         )
-        write_symbolic(score, base)
+        files = write_symbolic(score, base)
+        if not args.no_audio:
+            files["wav"] = synthesize(files["midi"], base.with_suffix(".wav"))
 
         print(f"[{i + 1}/{args.n}] {base.parent}  notas={len(comp.tokens)}")
 
