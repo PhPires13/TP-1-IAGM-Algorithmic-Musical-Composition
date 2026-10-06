@@ -10,12 +10,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .bass import BassChain
 from .markov import END, MarkovChain
 
 
 @dataclass
 class Composition:
     tokens: list[tuple]  # melodia: (altura, duração, posição no compasso, fermata)
+    bass: list[int] | None  # alturas do baixo, ou None se gerada sem baixo
     orders_used: list[int] = field(default_factory=list)  # ordem efetiva de cada passo após o backoff
     attempts: int = 1  # tentativas até satisfazer a forma
 
@@ -31,7 +33,7 @@ def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int 
     :param min_phrase_notes: tamanho mínimo de cada frase
     :param max_phrase_notes: tamanho médio máximo das frases (limita o total de notas)
     :param max_attempts: tentativas antes de desistir
-    :return: a melodia gerada
+    :return: a melodia gerada (sem baixo)
     """
     max_notes = n_phrases * max_phrase_notes
     for attempt in range(1, max_attempts + 1):
@@ -60,15 +62,17 @@ def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int 
             if sym[3]:  # fermata fecha a frase
                 phrases, phrase_len = phrases + 1, 0
                 if phrases == n_phrases:
-                    return Composition(tokens, orders, attempt)
+                    return Composition(tokens, None, orders, attempt)
         # passou do tamanho máximo sem fechar a forma: rejeita e tenta de novo
     raise RuntimeError("não foi possível gerar uma peça que satisfaça a forma")
 
 
-def compose(model: MarkovChain, seed: int, n_phrases: int = 4, temperature: float = 1.0) -> Composition:
-    """Gera uma melodia a partir de uma semente
+def compose(model: MarkovChain, bass_model: BassChain | None, seed: int,
+            n_phrases: int = 4, temperature: float = 1.0) -> Composition:
+    """Gera uma peça completa (melodia e, opcionalmente, baixo) a partir de uma semente
 
     :param model: cadeia de Markov da melodia
+    :param bass_model: cadeia do baixo, ou None para gerar só a melodia
     :param seed: semente (a mesma semente gera a mesma peça)
     :param n_phrases: número de frases da peça
     :param temperature: temperatura da amostragem
@@ -76,4 +80,6 @@ def compose(model: MarkovChain, seed: int, n_phrases: int = 4, temperature: floa
     """
     rng = np.random.default_rng(seed)
     comp = compose_melody(model, rng, n_phrases, temperature)
+    if bass_model is not None:
+        comp.bass = bass_model.generate(comp.tokens, rng, temperature)
     return comp

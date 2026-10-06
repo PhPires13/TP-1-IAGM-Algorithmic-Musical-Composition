@@ -18,10 +18,11 @@ from .corpus import TONIC_MIDI
 
 # ---------- PARTITURA ----------
 
-def to_score(tokens, bpm: int = 76, title: str = "Coral gerado") -> stream.Score:
-    """Monta a partitura do music21 com o soprano
+def to_score(tokens, bass=None, bpm: int = 76, title: str = "Coral gerado") -> stream.Score:
+    """Monta a partitura do music21 com o soprano e, se houver, o baixo
 
     :param tokens: melodia gerada
+    :param bass: alturas do baixo (None para só a melodia)
     :param bpm: andamento
     :param title: título da partitura
     :return: partitura do music21
@@ -46,6 +47,21 @@ def to_score(tokens, bpm: int = 76, title: str = "Coral gerado") -> stream.Score
             n.expressions.append(expressions.Fermata())
         sop.append(n)
     score.insert(0, sop)
+
+    # ----- Baixo (mesmo ritmo do soprano)
+    if bass is not None:
+        bp = stream.Part(id="Baixo")
+        bp.partName = "Baixo"
+        bp.insert(0, instrument.Bass())
+        bp.append(meter.TimeSignature("4/4"))
+        if pickup:
+            bp.append(note.Rest(quarterLength=pickup))
+        for (rel, dur, _b, ferm), b in zip(tokens, bass):
+            n = note.Note(tonic + b, quarterLength=dur)
+            if ferm:
+                n.expressions.append(expressions.Fermata())
+            bp.append(n)
+        score.insert(0, bp)
     return score
 
 
@@ -112,7 +128,7 @@ def synthesize(midi_path: Path, wav_path: Path, sr: int = 44100) -> Path:
         rel_start = int(dur * sr)
         env[rel_start:] = np.exp(-np.arange(n - rel_start) / (0.06 * sr))
 
-        gain = (vel / 127) * (0.6 if pitch_ >= 55 else 0.45)  # notas graves um pouco mais suaves
+        gain = (vel / 127) * (0.6 if pitch_ >= 55 else 0.45)  # baixo um pouco mais suave
         i0 = int(start * sr)
         out[i0:i0 + n] += gain * tone * env
 

@@ -1,4 +1,4 @@
-"""Extrai o corpus de treino: linhas de soprano dos corais de J. S. Bach do music21
+"""Extrai o corpus de treino: linhas de soprano (e o baixo correspondente) dos corais de J. S. Bach do music21
 
 Cada nota do soprano vira um token (altura relativa à tônica, duração, posição no compasso, fermata)
 Todas as peças são transpostas para Dó maior, então o modelo aprende graus da escala
@@ -55,12 +55,13 @@ def _soprano_part(score):
 
 
 def chorale_to_tokens(score):
-    """Converte um coral em tokens do soprano, se ele seguir a restrição de estilo
+    """Converte um coral em tokens do soprano e alturas do baixo, se ele seguir a restrição de estilo
 
     :param score: partitura do coral
-    :return: tokens do soprano, ou None se a peça for descartada
+    :return: (tokens do soprano, baixo que soa em cada nota do soprano), ou None se a peça for descartada
     """
     part = _soprano_part(score)
+    bass = score.parts[-1]
 
     # ----- Filtros da restrição de estilo
     sigs = part.recurse().getElementsByClass("TimeSignature")
@@ -77,9 +78,10 @@ def chorale_to_tokens(score):
         semis -= 12
     iv = interval.Interval(semis)
     part = part.transpose(iv).stripTies()
+    bass_notes = bass.transpose(iv).stripTies().flatten().notes.stream()
 
     # ----- Tokenização
-    tokens = []
+    tokens, bass_rel = [], []
     for n in part.flatten().notesAndRests:
         if not isinstance(n, m21note.Note):  # pausas no soprano são raras, descarta a peça
             return None
@@ -91,12 +93,17 @@ def chorale_to_tokens(score):
         ferm = any(e.classes[0] == "Fermata" for e in n.expressions)
         tokens.append((rel, dur, beat, ferm))
 
+        b = bass_notes.getElementAtOrBefore(n.offset)  # baixo que soa no início desta nota
+        if b is None or not isinstance(b, m21note.Note):
+            return None
+        bass_rel.append(b.pitch.midi - TONIC_MIDI)
+
     if len(tokens) < 16:
         return None
     rel, dur, beat, _ = tokens[-1]
     tokens[-1] = (rel, dur, beat, True)  # a última nota sempre fecha uma frase
 
-    return tokens
+    return tokens, bass_rel
 
 
 # ---------- CARREGAMENTO ----------
@@ -106,16 +113,16 @@ def load_corpus(use_cache: bool = True, verbose: bool = True):
 
     :param use_cache: usa o cache em corpus/ se ele existir
     :param verbose: mostra o progresso
-    :return: (sequências do soprano, nomes das peças)
+    :return: (sequências do soprano, sequências do baixo, nomes das peças)
     """
     CACHE_DIR.mkdir(exist_ok=True)
     cache = CACHE_DIR / "bach_chorales_major.json"
     if use_cache and cache.exists():
         data = json.loads(cache.read_text())
         seqs = [[str_to_token(s) for s in seq] for seq in data["sequences"]]
-        return seqs, data["pieces"]
+        return seqs, data["bass"], data["pieces"]
 
-    sequences, names = [], []
+    sequences, basses, names = [], [], []
     paths = corpus.getComposer("bach")
     seen_melodies = set()
     for i, path in enumerate(paths):
@@ -123,16 +130,18 @@ def load_corpus(use_cache: bool = True, verbose: bool = True):
             score = corpus.parse(path)
             if len(score.parts) != 4:
                 continue
-            toks = chorale_to_tokens(score)
+            res = chorale_to_tokens(score)
         except Exception:  # alguns arquivos do corpus têm problemas de parsing
             continue
-        if toks is None:
+        if res is None:
             continue
+        toks, bass_rel = res
         key_ = tuple(toks)
         if key_ in seen_melodies:  # vários corais harmonizam a mesma melodia
             continue
         seen_melodies.add(key_)
         sequences.append(toks)
+        basses.append(bass_rel)
         names.append(Path(str(path)).stem)
         if verbose and len(sequences) % 25 == 0:
             print(f"  {len(sequences)} corais aceitos ({i + 1}/{len(paths)} arquivos lidos)")
@@ -140,8 +149,9 @@ def load_corpus(use_cache: bool = True, verbose: bool = True):
     data = {
         "pieces": names,
         "sequences": [[token_to_str(t) for t in seq] for seq in sequences],
+        "bass": basses,
     }
     cache.write_text(json.dumps(data))
     if verbose:
         print(f"Corpus: {len(sequences)} melodias de corais em modo maior.")
-    return sequences, names
+    return sequences, basses, names
