@@ -20,13 +20,14 @@ class Composition:
     attempts: int = 1  # tentativas até satisfazer a forma
 
 
-def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int = 4, min_phrase_notes: int = 5,
-                   max_phrase_notes: int = 16, max_attempts: int = 500) -> Composition:
+def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int = 4, temperature: float = 1.0,
+                   min_phrase_notes: int = 5, max_phrase_notes: int = 16, max_attempts: int = 500) -> Composition:
     """Gera nota por nota até completar n_phrases frases, descartando tentativas que ficam longas demais
 
     :param model: cadeia de Markov treinada
     :param rng: gerador de números aleatórios
     :param n_phrases: número de frases (fermatas) da peça
+    :param temperature: temperatura da amostragem
     :param min_phrase_notes: tamanho mínimo de cada frase
     :param max_phrase_notes: tamanho médio máximo das frases (limita o total de notas)
     :param max_attempts: tentativas antes de desistir
@@ -52,7 +53,7 @@ def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int 
                     return False
                 return True
 
-            sym, k = model.sample_next(tokens, rng, allowed)
+            sym, k = model.sample_next(tokens, rng, temperature, allowed)
             tokens.append(sym)
             orders.append(k)
             phrase_len += 1
@@ -64,14 +65,15 @@ def compose_melody(model: MarkovChain, rng: np.random.Generator, n_phrases: int 
     raise RuntimeError("não foi possível gerar uma peça que satisfaça a forma")
 
 
-def compose(model: MarkovChain, seed: int, n_phrases: int = 4) -> Composition:
+def compose(model: MarkovChain, seed: int, n_phrases: int = 4, temperature: float = 1.0) -> Composition:
     """Gera uma melodia a partir de uma semente
 
     :param model: cadeia de Markov da melodia
     :param seed: semente (a mesma semente gera a mesma peça)
     :param n_phrases: número de frases da peça
+    :param temperature: temperatura da amostragem
     :return: a peça gerada
     """
     rng = np.random.default_rng(seed)
-    comp = compose_melody(model, rng, n_phrases)
+    comp = compose_melody(model, rng, n_phrases, temperature)
     return comp

@@ -1,4 +1,4 @@
-"""Cadeia de Markov de ordem n com backoff
+"""Cadeia de Markov de ordem n com backoff e amostragem com temperatura
 
 P(x_t | x_t-n ... x_t-1) é estimada por máxima verossimilhança (contagens) no corpus
 Se o contexto de ordem n nunca foi visto ou todas as continuações são proibidas, o modelo recua para a ordem n-1
@@ -85,14 +85,34 @@ class MarkovChain:
             return symbols, probs / probs.sum(), k
         raise RuntimeError("nenhuma continuação válida, nem na ordem 0")
 
-    def sample_next(self, history, rng: np.random.Generator, allowed: Callable[[Hashable], bool] | None = None):
+    @staticmethod
+    def apply_temperature(probs: np.ndarray, temperature: float) -> np.ndarray:
+        """Reescala as probabilidades: T < 1 favorece as transições comuns, T > 1 deixa a escolha mais uniforme
+
+        :param probs: probabilidades originais
+        :param temperature: temperatura (0 escolhe sempre a mais provável)
+        :return: probabilidades reescaladas
+        """
+        if temperature <= 0:
+            out = np.zeros_like(probs)
+            out[np.argmax(probs)] = 1.0
+            return out
+        logp = np.log(probs) / temperature  # equivale a p^(1/T)
+        logp -= logp.max()  # estabilidade numérica
+        p = np.exp(logp)
+        return p / p.sum()
+
+    def sample_next(self, history, rng: np.random.Generator, temperature: float = 1.0,
+                    allowed: Callable[[Hashable], bool] | None = None):
         """Sorteia o próximo estado
 
         :param history: estados gerados até agora
         :param rng: gerador de números aleatórios
+        :param temperature: temperatura da amostragem
         :param allowed: filtro das restrições (None permite tudo)
         :return: (estado sorteado, ordem usada)
         """
         symbols, probs, k = self.next_distribution(history, allowed)
+        probs = self.apply_temperature(probs, temperature)
         idx = rng.choice(len(symbols), p=probs)
         return symbols[idx], k

@@ -1,9 +1,9 @@
 """Gera corais no estilo de J. S. Bach com uma cadeia de Markov de ordem n
 
 Exemplos:
-    python generate.py                                  # 3 peças, ordem 3
+    python generate.py                                  # 3 peças, ordem 3, T = 1.0
     python generate.py --order 1 --n 5 --seed 10
-    python generate.py --order 5 --phrases 6
+    python generate.py --order 5 --temperature 1.5 --phrases 6
 """
 
 from __future__ import annotations
@@ -31,6 +31,7 @@ def build_models(order: int):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--order", type=int, default=3, help="ordem n da cadeia de Markov (memória)")
+    ap.add_argument("--temperature", type=float, default=1.0, help="temperatura da amostragem")
     ap.add_argument("--phrases", type=int, default=4, help="número de frases (fermatas) da peça")
     ap.add_argument("--n", type=int, default=3, help="quantidade de peças a gerar")
     ap.add_argument("--seed", type=int, default=0, help="semente inicial (peça i usa seed+i)")
@@ -42,12 +43,15 @@ def main():
 
     for i in range(args.n):
         seed = args.seed + i
-        comp = compose(model, seed, n_phrases=args.phrases)
+        comp = compose(model, seed, n_phrases=args.phrases, temperature=args.temperature)
 
         # ----- Arquivos simbólicos
-        name = f"o{args.order}_p{args.phrases}_s{seed}"
+        name = f"o{args.order}_t{args.temperature:g}_p{args.phrases}_s{seed}"
         base = args.outdir / name / name
-        score = to_score(comp.tokens, title=f"Coral Markov (ordem {args.order}, semente {seed})")
+        score = to_score(
+            comp.tokens,
+            title=f"Coral Markov (ordem {args.order}, T={args.temperature:g}, semente {seed})",
+        )
         write_symbolic(score, base)
 
         print(f"[{i + 1}/{args.n}] {base.parent}  notas={len(comp.tokens)}")
