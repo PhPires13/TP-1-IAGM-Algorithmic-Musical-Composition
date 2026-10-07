@@ -9,12 +9,14 @@ Exemplos:
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from markov_music.bass import BassChain
 from markov_music.composer import compose
 from markov_music.corpus import load_corpus
 from markov_music.markov import MarkovChain
+from markov_music.metrics import describe
 from markov_music.render import synthesize, to_score, write_symbolic
 
 
@@ -23,12 +25,12 @@ def build_models(order: int, mode: str):
 
     :param order: ordem n da cadeia da melodia
     :param mode: "major" ou "minor"
-    :return: (cadeia da melodia, cadeia do baixo, sequências do corpus)
+    :return: (cadeia da melodia, cadeia do baixo, sequências do corpus, nomes das peças)
     """
-    seqs, basses, _ = load_corpus(mode)
+    seqs, basses, names = load_corpus(mode)
     model = MarkovChain(order).fit(seqs)
     bass_model = BassChain().fit(seqs, basses)
-    return model, bass_model, seqs
+    return model, bass_model, seqs, names
 
 
 def main():
@@ -45,7 +47,7 @@ def main():
     ap.add_argument("--outdir", type=Path, default=Path("outputs"))
     args = ap.parse_args()
 
-    model, bass_model, seqs = build_models(args.order, args.mode)
+    model, bass_model, seqs, names = build_models(args.order, args.mode)
     print(f"Modelo de ordem {args.order}: {model.n_contexts()} contextos de {len(seqs)} corais ({args.mode}).")
 
     for i in range(args.n):
@@ -72,7 +74,22 @@ def main():
         if not args.no_audio:
             files["wav"] = synthesize(files["midi"], base.with_suffix(".wav"))
 
-        print(f"[{i + 1}/{args.n}] {base.parent}  notas={len(comp.tokens)}")
+        # ----- Métricas e parâmetros da peça
+        info = describe(comp, seqs)
+        info["copied_from"] = names[info["copied_from"]] if info["copied_from"] >= 0 else None
+        info.update(
+            order=args.order,
+            temperature=args.temperature,
+            phrases=args.phrases,
+            mode=args.mode,
+            seed=seed,
+            tokens=[list(t) for t in comp.tokens],
+            bass=comp.bass,
+        )
+        base.with_suffix(".json").write_text(json.dumps(info, indent=1))
+
+        copied, novel = info["longest_copied_run"], info["novel_8gram_ratio"]
+        print(f"[{i + 1}/{args.n}] {base.parent}  notas={info['n_notes']}  copiado={copied}  novos8={novel:.0%}")
 
 
 if __name__ == "__main__":
