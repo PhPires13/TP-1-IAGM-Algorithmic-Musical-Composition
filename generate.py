@@ -72,7 +72,7 @@ def main():
         )
         files = write_symbolic(score, base)
         if not args.no_audio:
-            files["wav"] = synthesize(files["midi"], base.with_suffix(".wav"))
+            files["wav"] = synthesize(files["midi"], base.with_name(base.name + ".wav"))
 
         # ----- Métricas e parâmetros da peça
         info = describe(comp, seqs)
@@ -86,7 +86,7 @@ def main():
             tokens=[list(t) for t in comp.tokens],
             bass=comp.bass,
         )
-        base.with_suffix(".json").write_text(json.dumps(info, indent=1))
+        base.with_name(base.name + ".json").write_text(json.dumps(info, indent=1))
 
         copied, novel = info["longest_copied_run"], info["novel_8gram_ratio"]
         print(f"[{i + 1}/{args.n}] {base.parent}  notas={info['n_notes']}  copiado={copied}  novos8={novel:.0%}")

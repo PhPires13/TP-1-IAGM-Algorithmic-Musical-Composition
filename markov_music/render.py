@@ -76,8 +76,8 @@ def write_symbolic(score: stream.Score, out_base: Path) -> dict:
     :return: dicionário {"midi": caminho, "musicxml": caminho}
     """
     out_base.parent.mkdir(parents=True, exist_ok=True)
-    mid = out_base.with_suffix(".mid")
-    xml = out_base.with_suffix(".musicxml")
+    mid = out_base.with_name(out_base.name + ".mid")  # with_suffix quebraria nomes com ponto, como "t1.5"
+    xml = out_base.with_name(out_base.name + ".musicxml")
     score.write("midi", fp=str(mid))
     score.write("musicxml", fp=str(xml))
     return {"midi": mid, "musicxml": xml}
