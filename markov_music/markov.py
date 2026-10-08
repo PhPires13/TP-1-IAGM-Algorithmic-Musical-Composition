@@ -50,18 +50,6 @@ class MarkovChain:
         """
         return len(self.counts[self.order if k is None else k])
 
-    def transition_matrix(self, k: int | None = None) -> dict[tuple, dict]:
-        """Probabilidades de transição normalizadas (apenas para inspeção)
-
-        :param k: ordem do contexto (padrão: a ordem do modelo)
-        :return: dicionário contexto -> {próximo estado: probabilidade}
-        """
-        k = self.order if k is None else k
-        return {
-            ctx: {s: c / sum(cnt.values()) for s, c in cnt.items()}
-            for ctx, cnt in self.counts[k].items()
-        }
-
     # ---------- GERAÇÃO ----------
 
     def next_distribution(self, history: Sequence[Hashable], allowed: Callable[[Hashable], bool] | None = None):
