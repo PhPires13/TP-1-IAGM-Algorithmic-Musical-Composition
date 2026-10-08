@@ -103,8 +103,8 @@ Cada nota do soprano é um estado `(altura, duração, posição no compasso, fe
 O trabalho contou com o auxílio de IA durante o seu desenvolvimento.
 Os módelos usados foram:
 - Claude Code
-  - Planejamento do projeto, ajuda teórica, suporte de código (melhorias, bugs), melhoria da escrita, melhoria da formatação
-  - (Infelizmente as sessões do Claude Code são puramente locais e não tem opção de compartilhamento de link)
+  - Planejamento do projeto, ajuda teórica, suporte de código (ensinar, melhorias, bugs), melhoria da escrita, melhoria da formatação
+  - (Infelizmente as sessões do Claude Code são puramente locais e não tem opção de compartilhamento de link, com isso pedi para o mesmo gerar um arquivo markdown com a transcrição da conversa em [`transcricao_sessao_IAGM_TP1.md`](transcricao_sessao_IAGM_TP1.md))
 - Copilot
   - Completamento de código, completamento de comentários
   - (Não possui sessão apenas sugestões locais)
