@@ -97,3 +97,14 @@ markov_music/
 ```
 
 Cada nota do soprano é um estado `(altura, duração, posição no compasso, fermata)`, com a altura em semitons a partir de Dó4 depois de transpor a peça para Dó maior (ou Lá menor).
+
+## Uso de IA
+
+O trabalho contou com o auxílio de IA durante o seu desenvolvimento.
+Os módelos usados foram:
+- Claude Code
+  - Planejamento do projeto, ajuda teórica, suporte de código (melhorias, bugs), melhoria da escrita, melhoria da formatação
+  - (Infelizmente as sessões do Claude Code são puramente locais e não tem opção de compartilhamento de link)
+- Copilot
+  - Completamento de código, completamento de comentários
+  - (Não possui sessão apenas sugestões locais)
