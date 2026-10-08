@@ -143,7 +143,6 @@ def main():
         "novel_8gram_ratio",
         "mean_order_used",
         "pitch_range",
-        "pc_kl",
         "attempts",
     ]
     with out.open("w", newline="") as f:

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
-
 import numpy as np
 
 
@@ -58,22 +56,6 @@ def novelty(gen, corpus_ngrams: set, n: int) -> float:
     return sum(g not in corpus_ngrams for g in grams) / len(grams)
 
 
-def pitch_class_kl(gen, corpus_seqs) -> float:
-    """Divergência KL entre os histogramas de classes de altura da peça e do corpus
-
-    :param gen: tokens da peça gerada
-    :param corpus_seqs: sequências do corpus
-    :return: divergência (0 = distribuições iguais)
-    """
-    def hist(seqs):
-        c = Counter(t[0] % 12 for s in seqs for t in s)
-        h = np.array([c[i] for i in range(12)], dtype=float) + 1e-3  # evita log(0)
-        return h / h.sum()
-
-    p, q = hist([gen]), hist(corpus_seqs)
-    return float(np.sum(p * np.log(p / q)))
-
-
 def describe(comp, corpus_seqs, corpus_8grams=None) -> dict:
     """Calcula todas as métricas de uma peça
 
@@ -95,6 +77,5 @@ def describe(comp, corpus_seqs, corpus_8grams=None) -> dict:
         "novel_8gram_ratio": novelty(toks, corpus_8grams, 8),
         "mean_order_used": float(np.mean(comp.orders_used)),
         "pitch_range": max(rels) - min(rels),
-        "pc_kl": pitch_class_kl(toks, corpus_seqs),
         "attempts": comp.attempts,
     }

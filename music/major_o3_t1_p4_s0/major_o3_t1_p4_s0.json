@@ -6,7 +6,6 @@
  "novel_8gram_ratio": 0.8888888888888888,
  "mean_order_used": 2.9767441860465116,
  "pitch_range": 12,
- "pc_kl": 0.144183440260584,
  "attempts": 1,
  "order": 3,
  "temperature": 1.0,
